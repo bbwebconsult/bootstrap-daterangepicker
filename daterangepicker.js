@@ -36,6 +36,7 @@
         this.minDate = false;
         this.maxDate = false;
         this.dateLimit = false;
+        this.minDateLimit = false;
         this.autoApply = false;
         this.singleDatePicker = false;
         this.showDropdowns = false;
@@ -207,6 +208,9 @@
         if (typeof options.dateLimit === 'object')
             this.dateLimit = options.dateLimit;
 
+        if (typeof options.minDateLimit === 'object')
+            this.minDateLimit = options.minDateLimit;
+
         if (typeof options.opens === 'string')
             this.opens = options.opens;
 
@@ -326,7 +330,7 @@
 
                 // If the end of the range is before the minimum or the start of the range is
                 // after the maximum, don't display this range option at all.
-                if ((this.minDate && end.isBefore(this.minDate, this.timepicker ? 'minute' : 'day')) 
+                if ((this.minDate && end.isBefore(this.minDate, this.timepicker ? 'minute' : 'day'))
                   || (maxDate && start.isAfter(maxDate, this.timepicker ? 'minute' : 'day')))
                     continue;
 
@@ -508,6 +512,9 @@
 
             if (this.dateLimit && this.startDate.clone().add(this.dateLimit).isBefore(this.endDate))
                 this.endDate = this.startDate.clone().add(this.dateLimit);
+
+            if (this.minDateLimit && this.startDate.clone().add(this.minDateLimit).isAfter(this.endDate))
+                this.endDate = this.startDate.clone().add(this.minDateLimit);
 
             this.previousRightTime = this.endDate.clone();
 
@@ -773,6 +780,13 @@
                 }
             }
 
+            //adjust maxDate to reflect the dateLimit setting in order to
+            //grey out end dates before the dateLimit
+            var minEndDate = null;
+            if (this.endDate == null && this.minDateLimit) {
+                minEndDate = this.startDate.clone().add(this.minDateLimit).endOf('day');
+            }
+
             for (var row = 0; row < 6; row++) {
                 html += '<tr>';
 
@@ -805,6 +819,14 @@
                     //don't allow selection of dates after the maximum date
                     if (maxDate && calendar[row][col].isAfter(maxDate, 'day'))
                         classes.push('off', 'disabled');
+
+                    //don't allow end date before the min date-range
+                    if (minEndDate
+                      && calendar[row][col].isBefore(minEndDate, 'day')
+                      && calendar[row][col].isAfter(this.startDate, 'day')
+                    ) {
+                      classes.push('off', 'disabled');
+                    }
 
                     //don't allow selection of date if a custom function decides it's invalid
                     if (this.isInvalidDate(calendar[row][col]))
@@ -1520,7 +1542,7 @@
             this.container.find('input[name="daterangepicker_start"], input[name="daterangepicker_end"]').removeClass('active');
             $(e.target).addClass('active');
 
-            // Set the state such that if the user goes back to using a mouse, 
+            // Set the state such that if the user goes back to using a mouse,
             // the calendars are aware we're selecting the end of the range, not
             // the start. This allows someone to edit the end of a date range without
             // re-selecting the beginning, by clicking on the end date input then
