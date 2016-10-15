@@ -35,6 +35,7 @@
         this.endDate = moment().endOf('day');
         this.minDate = false;
         this.maxDate = false;
+        this.currentMaxDate = this.maxDate;
         this.dateLimit = false;
         this.minDateLimit = false;
         this.autoApply = false;
@@ -50,6 +51,7 @@
         this.linkedCalendars = true;
         this.autoUpdateInput = true;
         this.alwaysShowCalendars = false;
+        this.allowInvalidDatesInRange = true;
         this.ranges = {};
 
         this.opens = 'right';
@@ -265,11 +267,17 @@
         if (typeof options.isInvalidDate === 'function')
             this.isInvalidDate = options.isInvalidDate;
 
+        if (typeof options.isInvalidDateRange === 'function')
+            this.isInvalidDateRange = options.isInvalidDateRange;
+
         if (typeof options.isCustomDate === 'function')
             this.isCustomDate = options.isCustomDate;
 
         if (typeof options.alwaysShowCalendars === 'boolean')
             this.alwaysShowCalendars = options.alwaysShowCalendars;
+
+        if (typeof options.allowInvalidDatesInRange === 'boolean')
+            this.allowInvalidDatesInRange = options.allowInvalidDatesInRange;
 
         // update day names order to firstDay
         if (this.locale.firstDay != 0) {
@@ -521,10 +529,16 @@
             if (!this.isShowing)
                 this.updateElement();
 
+            this.currentMaxDate = null;
+
             this.updateMonthsInView();
         },
 
         isInvalidDate: function() {
+            return false;
+        },
+
+        isInvalidDateRange: function() {
             return false;
         },
 
@@ -780,6 +794,13 @@
                 }
             }
 
+            if (!this.allowInvalidDatesInRange
+                && this.currentMaxDate
+                && this.currentMaxDate.isBefore(maxDate)
+            ) {
+                maxDate = this.currentMaxDate;
+            }
+
             //adjust maxDate to reflect the dateLimit setting in order to
             //grey out end dates before the dateLimit
             var minEndDate = null;
@@ -825,12 +846,22 @@
                       && calendar[row][col].isBefore(minEndDate, 'day')
                       && calendar[row][col].isAfter(this.startDate, 'day')
                     ) {
-                      classes.push('off', 'disabled');
+                      classes.push('off', 'disabled', 'off-min');
                     }
 
                     //don't allow selection of date if a custom function decides it's invalid
-                    if (this.isInvalidDate(calendar[row][col]))
+                    if (this.isInvalidDate(calendar[row][col])) {
                         classes.push('off', 'disabled');
+                        if (!this.allowInvalidDatesInRange
+                            && !this.currentMaxDate
+                            && this.startDate
+                            && !this.endDate
+                            && this.startDate.isBefore(calendar[row][col])
+                            && maxDate.isAfter(calendar[row][col])
+                        ) {
+                           this.currentMaxDate = maxDate = calendar[row][col];
+                        }
+                    }
 
                     //highlight the currently selected start date
                     if (calendar[row][col].format('YYYY-MM-DD') == this.startDate.format('YYYY-MM-DD'))
@@ -1046,7 +1077,8 @@
             if (this.endDate)
                 this.container.find('input[name=daterangepicker_end]').val(this.endDate.format(this.locale.format));
 
-            if (this.singleDatePicker || (this.endDate && (this.startDate.isBefore(this.endDate) || this.startDate.isSame(this.endDate)))) {
+            if (!this.isInvalidDateRange(this.startDate, this.endDate) &&
+                (this.singleDatePicker || (this.endDate && (this.startDate.isBefore(this.endDate) || this.startDate.isSame(this.endDate))))) {
                 this.container.find('button.applyBtn').removeAttr('disabled');
             } else {
                 this.container.find('button.applyBtn').attr('disabled', 'disabled');
