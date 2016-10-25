@@ -50,6 +50,7 @@
         this.autoUpdateInput = true;
         this.alwaysShowCalendars = false;
         this.ranges = {};
+        this.availableDateRanges = {};
 
         this.opens = 'right';
         if (this.element.hasClass('pull-right'))
@@ -326,7 +327,7 @@
 
                 // If the end of the range is before the minimum or the start of the range is
                 // after the maximum, don't display this range option at all.
-                if ((this.minDate && end.isBefore(this.minDate, this.timepicker ? 'minute' : 'day')) 
+                if ((this.minDate && end.isBefore(this.minDate, this.timepicker ? 'minute' : 'day'))
                   || (maxDate && start.isAfter(maxDate, this.timepicker ? 'minute' : 'day')))
                     continue;
 
@@ -347,6 +348,10 @@
             }
             list += '</ul>';
             this.container.find('.ranges').prepend(list);
+        }
+
+        if (typeof options.availableDateRanges === 'object') {
+            this.availableDateRanges = options.availableDateRanges;
         }
 
         if (typeof cb === 'function') {
@@ -770,6 +775,22 @@
                 var maxLimit = this.startDate.clone().add(this.dateLimit).endOf('day');
                 if (!maxDate || maxLimit.isBefore(maxDate)) {
                     maxDate = maxLimit;
+                }
+            }
+
+            if (this.endDate == null && this.availableDateRanges) {
+                var rangeMaxDate = null;
+                for (index in this.availableDateRanges) {
+                    if (this.startDate >= this.availableDateRanges[index].start_date
+                        && this.startDate <= this.availableDateRanges[index].end_date
+                        && (!rangeMaxDate
+                            || this.availableDateRanges[index].end_date > rangeMaxDate)
+                    ) {
+                        rangeMaxDate = this.availableDateRanges[index].end_date;
+                    }
+                }
+                if (rangeMaxDate < maxDate) {
+                    maxDate = rangeMaxDate;
                 }
             }
 
@@ -1520,7 +1541,7 @@
             this.container.find('input[name="daterangepicker_start"], input[name="daterangepicker_end"]').removeClass('active');
             $(e.target).addClass('active');
 
-            // Set the state such that if the user goes back to using a mouse, 
+            // Set the state such that if the user goes back to using a mouse,
             // the calendars are aware we're selecting the end of the range, not
             // the start. This allows someone to edit the end of a date range without
             // re-selecting the beginning, by clicking on the end date input then
